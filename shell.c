@@ -87,11 +87,13 @@ int main() {
 					fd[0] = open(arquivos[i].in, O_RDONLY);
 					dup2(fd[0], 0);
 					arquivos[i].in = NULL;
+					close(fd[0]);
 				}
 				else if (arquivos[i].out) {
 					fd[1] = open(arquivos[i].out, O_WRONLY | O_CREAT);
 					dup2(fd[1], 1);
 					arquivos[i].out = NULL;
+					close(fd[1]);
 				}
         execvp(subcomandos[i], argv[i]);
         printf("Erro ao executar comando!\n");
