@@ -33,7 +33,7 @@ int main() {
 		/* Parsing de subcomandos (paralelos ou não)
 		 * Um comando é composto por um subcomando trivialmente */  
 		subcomandos[0] = strtok(comando, "&\n");
-		for(i = 1, qtd_sub = 1;
+		for(i = 1, qtd_sub = 1, paralelo = 0;
 			i < MAX_SUB && (subcomandos[i] = strtok(NULL, "&"));
 			i++) {
 
@@ -52,14 +52,20 @@ int main() {
 	 	* (com certo trabalho) */
 		for (i = 0, j = 0; i < qtd_sub; i++, j++) {
 			if (subcomandos[i]) {
-				strtok(subcomandos[i], "<");
-				arquivos[j].in = strtok(NULL, "<");
-				strtok(subcomandos[i], ">");
-				arquivos[j].out = strtok(NULL, ">");
-				while (arquivos[j].in && arquivos[j].in[0] == ' ')
-					arquivos[j].in++;
-				while (arquivos[j].out && arquivos[j].out[0] == ' ')
-					arquivos[j].out++;
+				arquivos[j].in = strchr(subcomandos[i], '<');
+				arquivos[j].out = strchr(subcomandos[i], '>');
+				if(arquivos[j].in) {
+					arquivos[j].in = strtok(arquivos[j].in, " \n");
+					arquivos[j].in = strtok(NULL, " \n");
+					while(arquivos[j].in[0] == ' ')
+							arquivos[j].in++;
+				}
+				if(arquivos[j].out) {
+					arquivos[j].out = strtok(arquivos[j].out, " \n");
+					arquivos[j].out = strtok(NULL, " \n");
+					while(arquivos[j].out[0] == ' ')
+							arquivos[j].out++;
+				}
 			}
 		}
 
