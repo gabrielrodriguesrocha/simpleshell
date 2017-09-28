@@ -169,7 +169,7 @@ int main() {
 					close(fd[0]);
 				}
 				if (arquivos[i].out) {
-					fd[1] = open(arquivos[i].out, O_WRONLY | O_CREAT);
+					fd[1] = open(arquivos[i].out, O_WRONLY | O_CREAT, 0666);
 					dup2(fd[1], 1);
 					arquivos[i].out = NULL;
 					close(fd[1]);
