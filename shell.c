@@ -55,16 +55,16 @@ int main() {
 
 			if (subcomandos[i][0] != '\n')
 					qtd_sub++;
-		
+
 			while(subcomandos[i][0] == ' ')
 					subcomandos[i]++;
 			paralelo_flag = 1;
 		}
-		
+
 		/*  Parsing de subcomandos com pipe
  		 *  O código abaixo é bem convolucionado,
  		 *  entretanto sua função é registrar quais subcomandos
- 		 *  tem quais subexpressões. */	
+ 		 *  tem quais subexpressões. */
 
 		for(i = 0, qtd_pipe = 1, pipe_flag = 0; i < qtd_sub; i++) {
 			pipecomandos[i][0] = strtok(subcomandos[i], "|");
@@ -73,23 +73,23 @@ int main() {
 					pipecomandos[i][j]++;
 			}
 		}
-		
+
 
 		/* Parsing de redirecionamento
  		 * Na verdade, o código abaixo tem dois casos:
  		 *
  		 * 1. se algum símbolo de pipe foi encontrado,
- 		 * 		o parsing é feito através da quebra de 
+ 		 * 		o parsing é feito através da quebra de
  		 * 		subcomandos em subexpressões com argumentos
  		 * 		e que possivelmente terão E/S redirecionada;
  		 * 		-> (caso em que pipe_flag == 1)
  		 *
- 		 * 2. senão, o parsing é feito tratando subcomandos 
- 		 * 		como as próprias subexpressões, com argumentos 
+ 		 * 2. senão, o parsing é feito tratando subcomandos
+ 		 * 		como as próprias subexpressões, com argumentos
  		 * 		e redirecionamento.
- 		 * 		-> (caso em que pipe_flag == 0) 
+ 		 * 		-> (caso em que pipe_flag == 0)
  		 *
- 		 * Essa é uma forma razoavelmente preguiçosa e 
+ 		 * Essa é uma forma razoavelmente preguiçosa e
  		 * perigosa de resolver um problema de ambiguidade na gramática. */
 
 		if (pipe_flag) {
@@ -132,11 +132,11 @@ int main() {
 				}
 			}
 		}
-		
+
 		/* Parsing de argumentos de subcomandos
  		 * Supõe-se que argumentos não contém whitespace */
 		int l;
-		for (i = 0, l = 0; i < qtd_sub; i++) 
+		for (i = 0, l = 0; i < qtd_sub; i++)
 			for (j = 0; (argv_internal[l][0] = strtok(pipecomandos[i][j], " \n")); j++, l++)
 				for(k = 1; k < MAX_SUB && (argv_internal[l][k] = strtok(NULL, " <>&|\n")); k++);
 
@@ -147,18 +147,18 @@ int main() {
 		if (!strcmp(comando, "exit")) {
 			exit(EXIT_SUCCESS);
 		}
-    
+
 		/*  O código abaixo simula execução paralela.
  	 	 *  Teríamos que usar threads para executar vários subcomandos paralelamente de fato
 	 	 *  ...não vamos usar threads. */
 		for (i = 0; i < qtd_sub; i++) {
 			pid = fork();
 			if (pid) { // Processo pai
-	
-				if (!paralelo_flag)
-					waitpid(pid, NULL, 0); 
 
-			} 
+				if (!paralelo_flag)
+					waitpid(pid, NULL, 0);
+
+			}
 			else { // Processo filho
 
 				/*  Tratamento de redirecionamento de E/S */
@@ -174,22 +174,24 @@ int main() {
 					arquivos[i].out = NULL;
 					close(fd[1]);
 				}
-	
+
 				/*  Tratamento de piping */
 				if (pipe_flag) {
 					pipe(fd);
-					if (fork()) {
+					int pipe_pid;
+					if ((pipe_pid = fork())) {
+						close(fd[1]);
+						dup2(fd[0], 0);
+						waitpid(pipe_pid, NULL, 0);
+						execvp(pipecomandos[i][1], argv_internal[i+1]);
+						printf("Erro ao executar comando %s!\n", pipecomandos[i][1]);
+						exit(EXIT_FAILURE);
+					}
+					else {
 						close(fd[0]);
 						dup2(fd[1], 1);
 						execvp(pipecomandos[i][0], argv_internal[i]);
 						printf("Erro ao executar comando %s!\n", pipecomandos[i][0]);
-						exit(EXIT_FAILURE);
-					}
-					else {
-						close(fd[1]);
-						dup2(fd[0], 0);
-						execvp(pipecomandos[i][1], argv_internal[i+1]);
-						printf("Erro ao executar comando %s!\n", pipecomandos[i][1]);
 						exit(EXIT_FAILURE);
 					}
 				}
