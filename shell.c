@@ -33,7 +33,7 @@ int main() {
  	 *  comando -> subcomando '&' comando OU '\n'                        *
  	 *  subcomando -> subexpressão '|' subcomando OU subexpressão        *
  	 *  subexpressão -> executável argumento                             *
- 	 *  executável -> x in $PATH | x in $PWD                             *
+ 	 *  executável -> x in $PATH OU x in $PWD                            *
  	 *  argumento -> (x in executável.argument_list) ' ' argumento OU '' *
  	 *********************************************************************/
 
