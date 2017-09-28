@@ -140,17 +140,16 @@ int main() {
 			for (j = 0; (argv_internal[l][0] = strtok(pipecomandos[i][j], " \n")); j++, l++)
 				for(k = 1; k < MAX_SUB && (argv_internal[l][k] = strtok(NULL, " <>&|\n")); k++);
 
-	/*----------------------------*
-	 *  Execução dos subcomandos  *
-	 *----------------------------*/
+		/*----------------------------*
+		 *  Execução dos subcomandos  *
+		 *----------------------------*/
 
 		if (!strcmp(comando, "exit")) {
 			exit(EXIT_SUCCESS);
 		}
 
-		/*  O código abaixo simula execução paralela.
- 	 	 *  Teríamos que usar threads para executar vários subcomandos paralelamente de fato
-	 	 *  ...não vamos usar threads. */
+		/*  O código abaixo simula execução não determinística *
+		 *	de subcomandos (outros processos) no background.   */
 		for (i = 0; i < qtd_sub; i++) {
 			pid = fork();
 			if (pid) { // Processo pai
