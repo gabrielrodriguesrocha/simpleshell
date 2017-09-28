@@ -152,54 +152,54 @@ int main() {
  	 	 *  Teríamos que usar threads para executar vários subcomandos paralelamente de fato
 	 	 *  ...não vamos usar threads. */
 		for (i = 0; i < qtd_sub; i++) {
-		pid = fork();
-		if (pid) { // Processo pai
+			pid = fork();
+			if (pid) { // Processo pai
+	
+				if (!paralelo_flag)
+					waitpid(pid, NULL, 0); 
 
-			if (!paralelo_flag)
-				waitpid(pid, NULL, 0); 
+			} 
+			else { // Processo filho
 
-		} 
-		else { // Processo filho
-
-			/*  Tratamento de redirecionamento de E/S */
-			if (arquivos[i].in) {
-				fd[0] = open(arquivos[i].in, O_RDONLY);
-				dup2(fd[0], 0);
-				arquivos[i].in = NULL;
-				close(fd[0]);
-			}
-			if (arquivos[i].out) {
-				fd[1] = open(arquivos[i].out, O_WRONLY | O_CREAT);
-				dup2(fd[1], 1);
-				arquivos[i].out = NULL;
-				close(fd[1]);
-			}
-
-			/*  Tratamento de piping */
-			if (pipe_flag) {
-				pipe(fd);
-				if (fork()) {
-					close(fd[0]);
-					dup2(fd[1], 1);
-					execvp(pipecomandos[i][0], argv_internal[i]);
-					printf("Erro ao executar comando %s!\n", pipecomandos[i][0]);
-					exit(EXIT_FAILURE);
-				}
-				else {
-					close(fd[1]);
+				/*  Tratamento de redirecionamento de E/S */
+				if (arquivos[i].in) {
+					fd[0] = open(arquivos[i].in, O_RDONLY);
 					dup2(fd[0], 0);
-					execvp(pipecomandos[i][1], argv_internal[i+1]);
-					printf("Erro ao executar comando %s!\n", pipecomandos[i][1]);
+					arquivos[i].in = NULL;
+					close(fd[0]);
+				}
+				if (arquivos[i].out) {
+					fd[1] = open(arquivos[i].out, O_WRONLY | O_CREAT);
+					dup2(fd[1], 1);
+					arquivos[i].out = NULL;
+					close(fd[1]);
+				}
+	
+				/*  Tratamento de piping */
+				if (pipe_flag) {
+					pipe(fd);
+					if (fork()) {
+						close(fd[0]);
+						dup2(fd[1], 1);
+						execvp(pipecomandos[i][0], argv_internal[i]);
+						printf("Erro ao executar comando %s!\n", pipecomandos[i][0]);
+						exit(EXIT_FAILURE);
+					}
+					else {
+						close(fd[1]);
+						dup2(fd[0], 0);
+						execvp(pipecomandos[i][1], argv_internal[i+1]);
+						printf("Erro ao executar comando %s!\n", pipecomandos[i][1]);
+						exit(EXIT_FAILURE);
+					}
+				}
+				/*  Tratamento de subexpressão sem piping */
+				else {
+					execvp(subcomandos[i], argv_internal[i]);
+					printf("Erro ao executar comando!\n");
 					exit(EXIT_FAILURE);
 				}
 			}
-			/*  Tratamento de subexpressão sem piping */
-			else {
-				execvp(subcomandos[i], argv_internal[i]);
-				printf("Erro ao executar comando!\n");
-				exit(EXIT_FAILURE);
-			}
-		}
 		}
 	}
 }
