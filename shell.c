@@ -22,7 +22,7 @@ int main() {
 	int fd[3];
 	char *walk;
 	int pid, qtd_sub;
-	short int paralelo;
+	short int bg;
 
 	int i,j;
 
@@ -30,10 +30,10 @@ int main() {
 		printf("> ");
 		fgets(comando, MAX, stdin);
 
-		/* Parsing de subcomandos (paralelos ou não)
+		/* Parsing de subcomandos (bgs ou não)
 		 * Um comando é composto por um subcomando trivialmente */  
 		subcomandos[0] = strtok(comando, "&\n");
-		for(i = 1, qtd_sub = 1, paralelo = 0;
+		for(i = 1, qtd_sub = 1, bg = 0;
 			i < MAX_SUB && (subcomandos[i] = strtok(NULL, "&"));
 			i++) {
 
@@ -42,7 +42,7 @@ int main() {
 		
 			while(subcomandos[i][0] == ' ')
 					subcomandos[i]++;
-			paralelo = 1;
+			bg = 1;
 		}
 
 		/* Parsing de subcomandos com direcionamento
@@ -76,38 +76,37 @@ int main() {
 			for (j = 1; j < MAX && (argv[i][j] = strtok(NULL, " \n<>&")); j++);
 		}
 
-	/*----------------------------*
-	 *  Execução dos subcomandos  *
-	 *----------------------------*/
-
-	if (!strcmp(comando, "exit")) {
-		exit(EXIT_SUCCESS);
-	}
+		/*----------------------------*
+		 *  Execução dos subcomandos  *
+		 *----------------------------*/
+	
+		if (!strcmp(comando, "exit")) {
+			exit(EXIT_SUCCESS);
+		}
     
-	/*  O código abaixo simula execução paralela.
- 	 *  Teríamos que usar threads para executar vários subcomandos paralelamente de fato
- 	 *  ...não vamos usar threads. */
-	for (i = 0; i < qtd_sub; i++) {
-	pid = fork();
-	if (pid) {
-		if (!paralelo)
-			waitpid(pid, NULL, 0); 
-		} else { // Felizmente os FDs internos não se alteram com duplicação, mesmo com troca de imagem
-		if (arquivos[i].in) {
-				fd[0] = open(arquivos[i].in, O_RDONLY);
-				dup2(fd[0], 0);
-				arquivos[i].in = NULL;
-				close(fd[0]);
-			}
-			if (arquivos[i].out) {
-				fd[1] = open(arquivos[i].out, O_WRONLY | O_CREAT);
-				dup2(fd[1], 1);
-				arquivos[i].out = NULL;
-				close(fd[1]);
-			}
-		execvp(subcomandos[i], argv[i]);
-		printf("Erro ao executar comando!\n");
-		exit(EXIT_FAILURE);
+		/*  O código abaixo simula execução não determinística *
+		 *	de subcomandos (outros processos) no background.   */
+		for (i = 0; i < qtd_sub; i++) {
+		pid = fork();
+		if (pid) {
+			if (!bg)
+				waitpid(pid, NULL, 0); 
+			} else { 
+				if (arquivos[i].in) { // Redirecionamento de entrada
+						fd[0] = open(arquivos[i].in, O_RDONLY);
+						dup2(fd[0], 0);
+						arquivos[i].in = NULL;
+						close(fd[0]);
+				}
+				if (arquivos[i].out) { // Redirecionamento de saída
+						fd[1] = open(arquivos[i].out, O_WRONLY | O_CREAT, 0666);
+						dup2(fd[1], 1);
+						arquivos[i].out = NULL;
+						close(fd[1]);
+				}
+				execvp(subcomandos[i], argv[i]);
+				printf("Erro ao executar comando!\n");
+				exit(EXIT_FAILURE);
 			}
 		}
 	}
