@@ -19,7 +19,7 @@ int main() {
 	char *pipecomandos[MAX_SUB][MAX_SUB];
 	fp arquivos[MAX_SUB];
 	char *subcomandos[MAX_SUB];
-	int fd[3];
+	int fd[2], r_fd[2];
 	char *walk;
 	int pid, qtd_sub, qtd_pipe;
 	short int paralelo_flag, pipe_flag;
@@ -93,21 +93,23 @@ int main() {
  		 * perigosa de resolver um problema de ambiguidade na gramática. */
 
 		if (pipe_flag) {
-			for (i = 0, j = 0; i < qtd_pipe; i++, j++) {
-				if (pipecomandos[i][j]) {
-					arquivos[j].in = strchr(pipecomandos[i][j], '<');
-					arquivos[j].out = strchr(pipecomandos[i][j], '>');
-					if(arquivos[j].in) {
-						arquivos[j].in = strtok(arquivos[j].in, " \n");
-						arquivos[j].in = strtok(NULL, " \n");
-						while(arquivos[j].in[0] == ' ')
-								arquivos[j].in++;
+			for (i = 0, k = 0; i < qtd_pipe; i++) {
+				for (j = 0; pipecomandos[i][j]; j++) {
+					arquivos[k].in = strchr(pipecomandos[i][j], '<');
+					arquivos[k].out = strchr(pipecomandos[i][j], '>');
+					if(arquivos[k].in) {
+						arquivos[k].in = strtok(arquivos[j].in, " \n");
+						arquivos[k].in = strtok(NULL, " \n");
+						while(arquivos[k].in[0] == ' ')
+								arquivos[k].in++;
+						k++;
 					}
-					if(arquivos[j].out) {
-						arquivos[j].out = strtok(arquivos[j].out, " \n");
-						arquivos[j].out = strtok(NULL, " \n");
-						while(arquivos[j].out[0] == ' ')
-								arquivos[j].out++;
+					if(arquivos[k].out) {
+						arquivos[k].out = strtok(arquivos[k].out, " \n");
+						arquivos[k].out = strtok(NULL, " \n");
+						while(arquivos[k].out[0] == ' ')
+								arquivos[k].out++;
+						k++;
 					}
 				}
 			}
@@ -162,16 +164,23 @@ int main() {
 
 				/*  Tratamento de redirecionamento de E/S */
 				if (arquivos[i].in) {
-					fd[0] = open(arquivos[i].in, O_RDONLY);
-					dup2(fd[0], 0);
+					r_fd[0] = open(arquivos[i].in, O_RDONLY);
+					dup2(r_fd[0], 0);
 					arquivos[i].in = NULL;
-					close(fd[0]);
+					close(r_fd[0]);
 				}
+				else {
+					r_fd[0] = 0;
+				}
+
 				if (arquivos[i].out) {
-					fd[1] = open(arquivos[i].out, O_WRONLY | O_CREAT, 0666);
-					dup2(fd[1], 1);
+					r_fd[1] = open(arquivos[i].out, O_WRONLY | O_CREAT, 0666);
+					dup2(r_fd[1], 1);
 					arquivos[i].out = NULL;
-					close(fd[1]);
+					close(r_fd[1]);
+				}
+				else {
+					r_fd[1] = 1;
 				}
 
 				/*  Tratamento de piping */
