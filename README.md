@@ -1,6 +1,6 @@
 # simpleshell
 
-*A shell so simple, it makes you feel good about your own shell*
+*A shell so simple, it makes you want to be a simple kind of man*
 
 Este shell foi desenvolvida para o 2º experimento da disciplina Laboratório de Sistemas Operacionais,
 ministrada na Universidade Federal de São Carlos (Campus Sorocaba) pelo Prof. Dr. Gustavo M. D. Vieira.
