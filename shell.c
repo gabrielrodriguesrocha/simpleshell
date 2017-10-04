@@ -31,13 +31,14 @@ int main() {
 	/*********************************************************************
  	 *  comando -> subcomando '&' comando OU '\n'                        *
  	 *  subcomando -> subexpressão '|' subcomando OU subexpressão        *
- 	 *  subexpressão -> executável argumento                             *
+ 	 *  subexpressão -> executável argumento OU                          *
+	 *                  executável argumento redireção                   *
+	 *  redireção -> '>' arquivo OU '<' arquivo OU                       *
+	 *               '<' arquivo '>' arquivo                             *
  	 *  executável -> x in $PATH OU x in $PWD                            *
  	 *  argumento -> (x in executável.argument_list) ' ' argumento OU '' *
+	 *  arquivo -> .+                                                    *
  	 *********************************************************************/
-
-	/*  Na pŕatica, subcomando é composto por no máximo duas subexpressões
-	 *  separadas por um "|". */
 
 	int i,j,k;
 
@@ -47,8 +48,10 @@ int main() {
 
 		/* Parsing de subcomandos (paralelos ou não)
 		 * Um comando é composto por um subcomando trivialmente 
-		 * subcomandos[i] corresponde ao i-ésimo subcomando
+		 * subcomandos[i] corresponde ao i-ésimo subcomando.
+		 *
 		 * Exemplo:
+		 * 
 		 * cat < a.txt | sort -r > b.txt & gnome-calculator &
 		 * ------------V---------------    --------V-------
 		 *  		 subcomandos[0]             subcomandos[1]   */
@@ -71,11 +74,13 @@ int main() {
  		 *  entretanto sua função é registrar quais subcomandos
  		 *  tem quais subexpressões. 
  		 *  pipecomandos[i][j] corresponde à j-ésima subexpressão
- 		 *  														  do i-ésimo comando 
- 		 *  Exemplo:
+ 		 *  do i-ésimo comando.
+ 		 *  
+		 *  Exemplo:
  		 *     cat < a.txt     |   sort -r > b.txt   &  gnome-calculator & 
  		 *     -----V-----         -------V-------      -------V--------
- 		 *  pipecomandos[1][0]    pipecomandos[0][1]   pipecomandos[1][0]
+ 		 *  
+		 *  pipecomandos[1][0]    pipecomandos[0][1]   pipecomandos[1][0]
  		 *
  		 *  Note que pipecomandos[1][0] é identificado mesmo 
  		 *  sem que essa subexpressão redirecione sua saída
