@@ -200,49 +200,106 @@ int main() {
 			pid = fork();
 			if (pid) { // Processo pai
 
-				if (!paralelo_flag)
+				if (!paralelo_flag) // Execução no background
 					waitpid(pid, NULL, 0);
 
 			}
 			else { // Processo filho
 
-				/*  Tratamento de piping */
+				/*  Tanto a execução de subcomandos com piping e sem piping
+				 *  usam a chamada de sistema execvp, para execução c/ argumentos. */
+
+				/*  TRATAMENTO DE PIPING
+				 *
+				 *  A ideia é criar uma cadeia de subexpressões,
+				 *  em que cada subexpressão gera um par de FDs
+				 *  através de um pipe, de forma que o FD de entrada
+				 *  da i-ésima subexp. é o FD de leitura do pipe
+				 *  da (i-1)-ésimo subexp.
+				 *
+				 *  A chamada de sistema pipe toma um vetor fd
+				 *  de inteiros com 2 elementos e cria um pipe implícito
+				 *  onde fd[0] é o FD de leitura e fd[1] é o FD de escrita.
+				 *  Logo as subexp. escrevem em fd[1] e leem do fd[0]
+				 *  de subexps. anteriores, obtido através da variável input.
+				 *
+				 *  Exemplo:
+				 *  		
+				 *  		ls -l | sort | wc -l
+				 *
+				 *  1ª iteração: (A primeira subexp. desconsidera o input)
+				 *  		subexp. = ls -l
+				 *  		fd[0]   = 2
+				 *  		fd[1]   = 3
+				 *  		input   = ?
+				 *
+				 *  2ª iteração: (As subexps. intermediárias redirecionam entrada e saída)
+				 *  		subexp. = sort
+				 *  		fd[0]		= 4
+				 *  		fd[1]   = 5
+				 *  		input   = 2
+				 *  		
+				 *  3ª iteração: (A subexp. ignora o fd[1], e imprime para STDOUT ou um arquivo)
+				 *  		subexp. = wc -l
+				 *  		fd[0]   = 6
+				 *  		fd[1]   = 7
+				 *  		input   = 4
+				 *
+				 *  Fim de execução.*/
+
 				if (pipe_flag && qtd_pipe) {
-					pipe(fd);
-					int pipe_pid;
-					qtd_pipe = qtd_pipe - 2;
-
-					if (arquivos[i].in) {
-						r_fd[0] = open(arquivos[i].in, O_RDONLY);
-						dup2(r_fd[0], 0);
-						arquivos[i].in = NULL;
-						close(r_fd[0]);
-					}
+					int pipe_pid, input;
+					for(j = 0; pipecomandos[i][j] && qtd_pipe; j++) {
+						pipe(fd);
+						if (arquivos[j].in) {
+							r_fd[0] = open(arquivos[j].in, O_RDONLY);
+							arquivos[j].in = NULL;
+						}
+						else
+							r_fd[0] = 0;
+		
+						if (arquivos[j].out) {
+							r_fd[1] = open(arquivos[j].out, O_WRONLY | O_CREAT, 0666);
+							arquivos[j].out = NULL;
+						}
+						else
+							r_fd[1] = 1;
 	
-					if (arquivos[i+1].out) {
-						r_fd[1] = open(arquivos[i+1].out, O_WRONLY | O_CREAT, 0666);
-						dup2(r_fd[1], 1);
-						arquivos[i].out = NULL;
-						close(r_fd[1]);
-					}
-
-					if ((pipe_pid = fork())) {
-						close(fd[1]);
-						dup2(fd[0], 0);
-						waitpid(pipe_pid, NULL, 0);
-						execvp(pipecomandos[i][1], argv_internal[i+1]);
-						printf("Erro ao executar comando %s!\n", pipecomandos[i][1]);
-						exit(EXIT_FAILURE);
-					}
-					else {
-						close(fd[0]);
-						dup2(fd[1], 1);
-						execvp(pipecomandos[i][0], argv_internal[i]);
-						printf("Erro ao executar comando %s!\n", pipecomandos[i][0]);
-						exit(EXIT_FAILURE);
+						if ((pipe_pid = fork())) {
+							waitpid(pipe_pid, NULL, 0);
+							input = fd[0];
+							close(fd[1]);
+							qtd_pipe--;
+						}
+						else {
+							if (j == 0) { // Primeira subexpressão
+								if(r_fd[0] != 0) { // Redirecionamento de entrada
+									dup2(r_fd[0], 0);
+									close(r_fd[0]);
+								}
+								dup2(fd[1], 1);
+							}
+							else if (pipecomandos[i][j+1]) { // Subexpressões interiores
+								dup2(input, 0);
+								dup2(fd[1], 1);
+								close(input);
+							}
+							else { // Subexpressão final
+								if(r_fd[1] != 1) { // Redirecionamento de saída
+									dup2(r_fd[1], 1);
+									close(r_fd[1]);
+								}
+								dup2(input, 0);
+								close(fd[1]);
+								close(input);
+							}
+							execvp(pipecomandos[i][j], argv_internal[j]);
+							printf("Erro ao executar comando %s!\n", pipecomandos[i][j]);
+							exit(EXIT_FAILURE);
+						}
 					}
 				}
-				/*  Tratamento de subexpressão sem piping */
+				/*  EXECUÇÃO USUAL */
 				else {
 					if (arquivos[i].in) {
 						r_fd[0] = open(arquivos[i].in, O_RDONLY);
