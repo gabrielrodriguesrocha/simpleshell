@@ -20,7 +20,6 @@ int main() {
 	fp arquivos[MAX_SUB];
 	char *subcomandos[MAX_SUB];
 	int fd[2], r_fd[2];
-	char *walk;
 	int pid, qtd_sub, qtd_pipe;
 	short int paralelo_flag, pipe_flag;
 
@@ -47,7 +46,13 @@ int main() {
 		fgets(comando, MAX, stdin);
 
 		/* Parsing de subcomandos (paralelos ou não)
-		 * Um comando é composto por um subcomando trivialmente */
+		 * Um comando é composto por um subcomando trivialmente 
+		 * subcomandos[i] corresponde ao i-ésimo subcomando
+		 * Exemplo:
+		 * cat < a.txt | sort -r > b.txt & gnome-calculator &
+		 * ------------V---------------    --------V-------
+		 *  		 subcomandos[0]             subcomandos[1]   */
+
 		subcomandos[0] = strtok(comando, "&\n");
 		for(i = 1, qtd_sub = 1, paralelo_flag = 0;
 			i < MAX_SUB && (subcomandos[i] = strtok(NULL, "&"));
@@ -56,7 +61,7 @@ int main() {
 			if (subcomandos[i][0] != '\n')
 					qtd_sub++;
 
-			while(subcomandos[i][0] == ' ')
+			while(subcomandos[i][0] == ' ') // Remoção de whitespace
 					subcomandos[i]++;
 			paralelo_flag = 1;
 		}
@@ -64,12 +69,22 @@ int main() {
 		/*  Parsing de subcomandos com pipe
  		 *  O código abaixo é bem convolucionado,
  		 *  entretanto sua função é registrar quais subcomandos
- 		 *  tem quais subexpressões. */
+ 		 *  tem quais subexpressões. 
+ 		 *  pipecomandos[i][j] corresponde à j-ésima subexpressão
+ 		 *  														  do i-ésimo comando 
+ 		 *  Exemplo:
+ 		 *     cat < a.txt     |   sort -r > b.txt   &  gnome-calculator & 
+ 		 *     -----V-----         -------V-------      -------V--------
+ 		 *  pipecomandos[1][0]    pipecomandos[0][1]   pipecomandos[1][0]
+ 		 *
+ 		 *  Note que pipecomandos[1][0] é identificado mesmo 
+ 		 *  sem que essa subexpressão redirecione sua saída
+ 		 *  para outro processo.  */
 
 		for(i = 0, qtd_pipe = 1, pipe_flag = 0; i < qtd_sub; i++) {
 			pipecomandos[i][0] = strtok(subcomandos[i], "|");
 			for(j = 1; j < MAX_SUB && (pipecomandos[i][j] = strtok(NULL, "|")); j++, pipe_flag = 1, qtd_pipe++) {
-				while (pipecomandos[i][j][0] == ' ')
+				while (pipecomandos[i][j][0] == ' ') // Remoção de whitespace
 					pipecomandos[i][j]++;
 			}
 		}
@@ -84,17 +99,28 @@ int main() {
  		 * 		e que possivelmente terão E/S redirecionada;
  		 * 		-> (caso em que pipe_flag == 1)
  		 *
+ 		 * 	Exemplo:
+ 		 * 	   cat < a.txt | sort -r > b.txt
+ 		 * 	         --V--             --V--
+ 		 * 	      arquivos[0].in    arquivos[1].out
+ 		 *
  		 * 2. senão, o parsing é feito tratando subcomandos
  		 * 		como as próprias subexpressões, com argumentos
  		 * 		e redirecionamento.
  		 * 		-> (caso em que pipe_flag == 0)
  		 *
+ 		 * 	Exemplo:
+ 		 * 		sort <    shell.c    >    shell_sorted.c & ls -lh > a.txt &
+ 		 * 		          ---V---         -------V------            --V--
+ 		 * 		       arquivos[0].in     arquivos[0].out       arquivos[1].out
+ 		 *
  		 * Essa é uma forma razoavelmente preguiçosa e
  		 * perigosa de resolver um problema de ambiguidade na gramática. */
 
 		if (pipe_flag) {
+
 			for (i = 0, k = 0; i < qtd_pipe; i++) {
-				for (j = 0; pipecomandos[i][j]; j++) {
+				for (j = 0; pipecomandos[i][j]; j++, k++) {
 					arquivos[k].in = strchr(pipecomandos[i][j], '<');
 					arquivos[k].out = strchr(pipecomandos[i][j], '>');
 					if(arquivos[k].in) {
@@ -102,22 +128,22 @@ int main() {
 						arquivos[k].in = strtok(NULL, " \n");
 						while(arquivos[k].in[0] == ' ')
 								arquivos[k].in++;
-						k++;
 					}
 					if(arquivos[k].out) {
 						arquivos[k].out = strtok(arquivos[k].out, " \n");
 						arquivos[k].out = strtok(NULL, " \n");
 						while(arquivos[k].out[0] == ' ')
 								arquivos[k].out++;
-						k++;
 					}
 				}
 			}
+
 		}
 		else {
+
 			for (i = 0, j = 0; i < qtd_sub; i++, j++) {
 				if (subcomandos[i]) {
-				arquivos[j].in = strchr(subcomandos[i], '<');
+					arquivos[j].in = strchr(subcomandos[i], '<');
 					arquivos[j].out = strchr(subcomandos[i], '>');
 					if(arquivos[j].in) {
 						arquivos[j].in = strtok(arquivos[j].in, " \n");
@@ -133,14 +159,32 @@ int main() {
 					}
 				}
 			}
+
 		}
 
 		/* Parsing de argumentos de subcomandos
- 		 * Supõe-se que argumentos não contém whitespace */
+ 		 * Supõe-se que argumentos não contém whitespace
+ 		 * Exemplo:
+ 		 *
+ 		 *	ls -l -h | sort -r & df -h &
+ 		 *
+ 		 * ls   -> argv_internal[0][0]
+ 		 * -l   -> argv_internal[0][1]
+ 		 * -h   -> argv_internal[0][2]
+ 		 * | 
+ 		 * sort -> argv_internal[1][0]
+ 		 * -r   -> argv_internal[1][1]
+ 		 * &
+ 		 * df   -> argv_internal[2][0]
+ 		 * -h   -> argv_internal[2][1]
+ 		 * &
+ 		 *
+ 		 * */
+
 		int l;
-		for (i = 0, l = 0; i < qtd_sub; i++)
-			for (j = 0; (argv_internal[l][0] = strtok(pipecomandos[i][j], " \n")); j++, l++)
-				for(k = 1; k < MAX_SUB && (argv_internal[l][k] = strtok(NULL, " <>&|\n")); k++);
+		for (i = 0, l = 0; i < qtd_sub; i++) // Laço para cada subcomando
+			for (j = 0; (argv_internal[l][0] = strtok(pipecomandos[i][j], " \n")); j++, l++) // Laço para cada subexpressão (pipe)
+				for(k = 1; k < MAX_SUB && (argv_internal[l][k] = strtok(NULL, " <>&|\n")); k++); // Laço para cada argumento
 
 		/*----------------------------*
 		 *  Execução dos subcomandos  *
@@ -162,31 +206,26 @@ int main() {
 			}
 			else { // Processo filho
 
-				/*  Tratamento de redirecionamento de E/S */
-				if (arquivos[i].in) {
-					r_fd[0] = open(arquivos[i].in, O_RDONLY);
-					dup2(r_fd[0], 0);
-					arquivos[i].in = NULL;
-					close(r_fd[0]);
-				}
-				else {
-					r_fd[0] = 0;
-				}
-
-				if (arquivos[i].out) {
-					r_fd[1] = open(arquivos[i].out, O_WRONLY | O_CREAT, 0666);
-					dup2(r_fd[1], 1);
-					arquivos[i].out = NULL;
-					close(r_fd[1]);
-				}
-				else {
-					r_fd[1] = 1;
-				}
-
 				/*  Tratamento de piping */
-				if (pipe_flag) {
+				if (pipe_flag && qtd_pipe) {
 					pipe(fd);
 					int pipe_pid;
+					qtd_pipe = qtd_pipe - 2;
+
+					if (arquivos[i].in) {
+						r_fd[0] = open(arquivos[i].in, O_RDONLY);
+						dup2(r_fd[0], 0);
+						arquivos[i].in = NULL;
+						close(r_fd[0]);
+					}
+	
+					if (arquivos[i+1].out) {
+						r_fd[1] = open(arquivos[i+1].out, O_WRONLY | O_CREAT, 0666);
+						dup2(r_fd[1], 1);
+						arquivos[i].out = NULL;
+						close(r_fd[1]);
+					}
+
 					if ((pipe_pid = fork())) {
 						close(fd[1]);
 						dup2(fd[0], 0);
@@ -205,6 +244,20 @@ int main() {
 				}
 				/*  Tratamento de subexpressão sem piping */
 				else {
+					if (arquivos[i].in) {
+						r_fd[0] = open(arquivos[i].in, O_RDONLY);
+						dup2(r_fd[0], 0);
+						arquivos[i].in = NULL;
+						close(r_fd[0]);
+					}
+	
+					if (arquivos[i].out) {
+						r_fd[1] = open(arquivos[i].out, O_WRONLY | O_CREAT, 0666);
+						dup2(r_fd[1], 1);
+						arquivos[i].out = NULL;
+						close(r_fd[1]);
+					}
+
 					execvp(subcomandos[i], argv_internal[i]);
 					printf("Erro ao executar comando!\n");
 					exit(EXIT_FAILURE);
