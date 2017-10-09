@@ -54,7 +54,7 @@ int main() {
 		 * 
 		 * cat < a.txt | sort -r > b.txt & gnome-calculator &
 		 * ------------V---------------    --------V-------
-		 *  		 subcomandos[0]             subcomandos[1]   */
+		 *  	 subcomandos[0]             subcomandos[1]   */
 
 		subcomandos[0] = strtok(comando, "&\n");
 		for(i = 1, qtd_sub = 1, paralelo_flag = 0;
@@ -79,7 +79,6 @@ int main() {
 		 *  Exemplo:
  		 *     cat < a.txt     |   sort -r > b.txt   &  gnome-calculator & 
  		 *     -----V-----         -------V-------      -------V--------
- 		 *  
 		 *  pipecomandos[1][0]    pipecomandos[0][1]   pipecomandos[1][0]
  		 *
  		 *  Note que pipecomandos[1][0] é identificado mesmo 
@@ -240,7 +239,7 @@ int main() {
 				 *
 				 *  2ª iteração: (As subexps. intermediárias redirecionam entrada e saída)
 				 *  		subexp. = sort
-				 *  		fd[0]		= 4
+				 *  		fd[0]	= 4
 				 *  		fd[1]   = 5
 				 *  		input   = 2
 				 *  		
