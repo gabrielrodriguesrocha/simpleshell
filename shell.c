@@ -19,16 +19,9 @@ int main() {
 	char *pipecomandos[MAX_SUB][MAX_SUB];
 	fp arquivos[MAX_SUB];
 	char *subcomandos[MAX_SUB];
-<<<<<<< HEAD
-	int fd[3];
-	char *walk;
-	int pid, qtd_sub;
-	short int bg;
-=======
 	int fd[2], r_fd[2];
 	int pid, qtd_sub, qtd_pipe;
 	short int paralelo_flag, pipe_flag;
->>>>>>> piping
 
 	/*  Abaixo está descrita a gramática (ideal) deste shell.
  	 *  O símbolo tradicional para denotar união de regras, "|",
@@ -53,12 +46,6 @@ int main() {
 		printf("> ");
 		fgets(comando, MAX, stdin);
 
-<<<<<<< HEAD
-		/* Parsing de subcomandos (bgs ou não)
-		 * Um comando é composto por um subcomando trivialmente */  
-		subcomandos[0] = strtok(comando, "&\n");
-		for(i = 1, qtd_sub = 1, bg = 0;
-=======
 		/* Parsing de subcomandos (paralelos ou não)
 		 * Um comando é composto por um subcomando trivialmente 
 		 * subcomandos[i] corresponde ao i-ésimo subcomando.
@@ -71,7 +58,6 @@ int main() {
 
 		subcomandos[0] = strtok(comando, "&\n");
 		for(i = 1, qtd_sub = 1, paralelo_flag = 0;
->>>>>>> piping
 			i < MAX_SUB && (subcomandos[i] = strtok(NULL, "&"));
 			i++) {
 
@@ -80,9 +66,6 @@ int main() {
 
 			while(subcomandos[i][0] == ' ') // Remoção de whitespace
 					subcomandos[i]++;
-<<<<<<< HEAD
-			bg = 1;
-=======
 			paralelo_flag = 1;
 		}
 
@@ -108,7 +91,6 @@ int main() {
 				while (pipecomandos[i][j][0] == ' ') // Remoção de whitespace
 					pipecomandos[i][j]++;
 			}
->>>>>>> piping
 		}
 
 
@@ -216,39 +198,6 @@ int main() {
 			exit(EXIT_SUCCESS);
 		}
 
-<<<<<<< HEAD
-		/*----------------------------*
-		 *  Execução dos subcomandos  *
-		 *----------------------------*/
-	
-		if (!strcmp(comando, "exit")) {
-			exit(EXIT_SUCCESS);
-		}
-    
-		/*  O código abaixo simula execução não determinística *
-		 *	de subcomandos (outros processos) no background.   */
-		for (i = 0; i < qtd_sub; i++) {
-		pid = fork();
-		if (pid) {
-			if (!bg)
-				waitpid(pid, NULL, 0); 
-			} else { 
-				if (arquivos[i].in) { // Redirecionamento de entrada
-						fd[0] = open(arquivos[i].in, O_RDONLY);
-						dup2(fd[0], 0);
-						arquivos[i].in = NULL;
-						close(fd[0]);
-				}
-				if (arquivos[i].out) { // Redirecionamento de saída
-						fd[1] = open(arquivos[i].out, O_WRONLY | O_CREAT, 0666);
-						dup2(fd[1], 1);
-						arquivos[i].out = NULL;
-						close(fd[1]);
-				}
-				execvp(subcomandos[i], argv[i]);
-				printf("Erro ao executar comando!\n");
-				exit(EXIT_FAILURE);
-=======
 		/*  O código abaixo simula execução não determinística *
 		 *	de subcomandos (outros processos) no background.   */
 		for (i = 0; i < qtd_sub; i++) {
@@ -374,7 +323,6 @@ int main() {
 					printf("Erro ao executar comando!\n");
 					exit(EXIT_FAILURE);
 				}
->>>>>>> piping
 			}
 		}
 	}
